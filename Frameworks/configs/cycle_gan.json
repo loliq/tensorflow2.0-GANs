@@ -1,0 +1,19 @@
+{
+"description": "Cyclegan config (using horse2zebra dataset)",
+"log_dir":"cyclegan_logs/",
+"train_config":{
+"batch_size":1,
+"resize_shape":[286, 286],
+"crop_shape": [256, 256],
+"ouput_channels":3,
+"buffer_size":400,
+"n_epoches":80,
+"lambda":10
+},
+"data":{
+"train_X_dir":"F:/01-datasets/05-GAN数据集/cycleGAN/horse2zebra/trainA",
+"test_X_dir":"F:/01-datasets/05-GAN数据集/cycleGAN/horse2zebra/testA",
+"train_Y_dir":"F:/01-datasets/05-GAN数据集/cycleGAN/horse2zebra/trainB",
+"test_Y_dir":"F:/01-datasets/05-GAN数据集/cycleGAN/horse2zebra/testB"
+}
+}

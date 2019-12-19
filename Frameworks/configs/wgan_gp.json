@@ -1,0 +1,15 @@
+{
+"image_dir":"E:/LLL/deepLearning/dataset/animation/images",
+"log_dir":"wgan_logs/",
+"batch_size":32,
+"latent_dim": 100,
+"dis_inter":5,
+"n_epoches":800,
+"log_inter"15,
+"train_buffer"6000,
+"input_shape"[64,64,3],
+"drop_rate":0.3,
+"d_base_lr":0.0001,
+"g_base_lr":0.0005,
+"lambda":10
+}
