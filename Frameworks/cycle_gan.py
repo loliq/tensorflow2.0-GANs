@@ -10,10 +10,11 @@
 模型结构与pixeel2pixel相似， 但是有下面一些不同点:
 1. cycle_gan 使用的是`instance normalization`, 而不是`batch normalization`
 2. cycle_gan 使用的是一种基于`resnet`的改进生成器，这边为了简单使用的是改进的`unet`生成器。
-生成器 G 学习将图片 X 转换为 Y。  (𝐺:𝑋−>𝑌)
-生成器 F 学习将图片 Y 转换为 X。  (𝐹:𝑌−>𝑋)
+生成器 G 学习将图片 X 转换为 Y。  (𝐺:𝑋−>𝑌) (𝐺:𝑋−>𝑌) 生成网络结构类似于autoencoder
+生成器 F 学习将图片 Y 转换为 X。  (𝐹:𝑌−>𝑋)  (𝐹:𝑌−>𝑋) # 生成网络类似于 autoencoder
 判别器 D_X 学习区分图片 X 与生成的图片 X (F(Y))。
 判别器 D_Y 学习区分图片 Y 与生成的图片 Y (G(X))。
+# TODO 这边用了谷歌官方定义的网络，所以生成图片大小为[256, 256]，目前似乎改不了会报错
 """
 
 import tensorflow as tf
@@ -22,7 +23,7 @@ import os
 from utils.utils import check_make_folders, read_json
 from glob import glob
 import math
-from utils.utils_cyclegan import make_dataset, generate_images
+from utils.utils_cyclegan import make_dataset, generate_images, test_dataset
 from Models import pix2pix
 from tqdm import tqdm
 import argparse
@@ -30,7 +31,7 @@ import argparse
 # 报错了，报了 和传入python 参数一样的错，估计是显存不够，后面换服务器再试试
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--config_path', required=False, default="configs/cycle_gan.json", help='path of config')
+parser.add_argument('--config_path', required=False, default="configs/cycle_gan_dent.json", help='path of config')
 args = parser.parse_args()
 
 
@@ -190,6 +191,11 @@ class Cycle_gan(tf.keras.Model):
         gen_g_gradients, gen_f_gradients, disc_x_gradients, disc_y_gradients = self.compute_gradients( real_x, real_y)
         self.apply_gradients(gen_g_gradients, gen_f_gradients, disc_x_gradients, disc_y_gradients)
 
+    def restore_from_ckpt(self, checkpoint_dir):
+
+        # restoring the latest checkpoint in checkpoint_dir
+        self.ckpt.restore(tf.train.latest_checkpoint(checkpoint_dir))
+
     def fit(self, trainX_ds, trainY_ds,
             testX_ds, testY_ds,
             epoches, num_batches,
@@ -213,10 +219,12 @@ class Cycle_gan(tf.keras.Model):
                     zip(range(num_batches),  tf.data.Dataset.zip((trainX_ds, trainY_ds))), total=num_batches):
                 self.train_step(image_x, image_y)
             # 测试生成器生成的效果， 从训练集中采样
-            generate_images(self.generator_g, sample_X, log_dir=image_save_dir, epoch=epoch)
+            saving_path = '{}/image_at_epoch_{:04d}.png'.format(image_save_dir, epoch)
+            generate_images(self.generator_g, sample_X, saving_path)
 
             if not epoch % save_internal:
                 ckpt_save_path = ckpt_manager.save()
+
                 print('Saving checkpoint for epoch {} at {}'.format(epoch + 1,
                                                                     ckpt_save_path))
             print('Time taken for epoch {} is {} sec\n'.format(epoch + 1,
@@ -230,6 +238,9 @@ if __name__ == '__main__':
     # 训练参数设置
     batch_size = Params["train_config"]["batch_size"]
     sample_image_dir = Params["log_dir"] + "/sample_images"
+    gen_x_dir = Params["log_dir"] + "/gen_x_domain"
+    gen_y_dir = Params["log_dir"] + "/gen_y_domain"
+    checkpoint_dir = Params["log_dir"] + './training_checkpoints'
     resize_shape = Params["train_config"]["resize_shape"]
     crop_shape = Params["train_config"]["crop_shape"]
     buffer_size = Params["train_config"]["buffer_size"]
@@ -241,9 +252,9 @@ if __name__ == '__main__':
     test_X_dir = Params["data"]["test_X_dir"]
     train_Y_dir = Params["data"]["train_Y_dir"]
     test_Y_dir = Params["data"]["test_Y_dir"]
-    checkpoint_dir = Params["log_dir"] + './training_checkpoints'
+
     # 创建文件夹
-    for folder in [sample_image_dir, checkpoint_dir]:
+    for folder in [sample_image_dir, checkpoint_dir, gen_x_dir, gen_y_dir]:
         check_make_folders(folder)
 
     # 计算num_batches + 导入dataset
@@ -305,9 +316,17 @@ if __name__ == '__main__':
                                 discriminator_y_optimizer=discriminator_y_optimizer,
                                 LAMBDA=LAMBDA
                                 )
-    # for image in test_X_ds:
-    #     print(image.shape)
+    # TODO 训练
+    # cycle_gan_model.fit(trainX_ds=train_X_ds, trainY_ds=train_Y_ds, testX_ds=test_X_ds, testY_ds=test_Y_ds,
+    #                     epoches=n_epochs, num_batches=num_batches,
+    #                     image_save_dir=sample_image_dir, checkpoint_prefix=checkpoint_dir, save_internal=10)
 
-    cycle_gan_model.fit(trainX_ds=train_X_ds, trainY_ds=train_Y_ds, testX_ds=test_X_ds, testY_ds=test_Y_ds,
-                        epoches=n_epochs, num_batches=num_batches,
-                        image_save_dir=sample_image_dir, checkpoint_prefix=checkpoint_dir, save_internal=10)
+    # TODO restore,restore 与load model的区别在于它会恢复所有的状态，包括训练状态
+    cycle_gan_model.restore_from_ckpt(checkpoint_dir)
+    # 测试 生成图片X->Y
+    test_dataset(cycle_gan_model.generator_g, test_X_ds, gen_x_dir)
+    # 测试图片 Y-X
+    test_dataset(cycle_gan_model.generator_f, test_Y_ds, gen_y_dir)
+
+
+

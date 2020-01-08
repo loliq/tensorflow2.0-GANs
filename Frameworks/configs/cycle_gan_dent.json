@@ -1,0 +1,19 @@
+{
+"description": "Cyclegan config (using horse2zebra dataset)",
+"log_dir":"cyclegan_logs/dent_generator",
+"train_config":{
+"batch_size":1,
+"resize_shape":[286, 286],
+"crop_shape": [256, 256],
+"ouput_channels":3,
+"buffer_size":400,
+"n_epoches":400,
+"lambda":10
+},
+"data":{
+"train_X_dir":"E:\\04-Dataset\\01-GAN\\00.凹凸压痕生成\\trainingset\\train\\OK",
+"test_X_dir":"E:\\04-Dataset\\01-GAN\\00.凹凸压痕生成\\trainingset\\val\\OK",
+"train_Y_dir":"E:\\04-Dataset\\01-GAN\\00.凹凸压痕生成\\trainingset\\train\\凹凸压痕",
+"test_Y_dir":"E:\\04-Dataset\\01-GAN\\00.凹凸压痕生成\\trainingset\\val\\凹凸压痕"
+}
+}
